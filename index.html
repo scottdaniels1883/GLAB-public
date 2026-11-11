@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GLAB Games</title>
+<meta name="theme-color" content="#14201d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Figtree:wght@400;600;700&display=swap">
+<style>
+/* Layout: a short shelf of game tiles, then install instructions. One dark look shared with the games. */
+:root {
+  --bg: #14201d;
+  --card: #1d2b28;
+  --ink: #eef3ef;
+  --soft: #9daca6;
+  --line: #2d3f3b;
+  --accent: #d1a954;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body); }
+.wrap {
+  max-width: 640px; margin: 0 auto; display: grid; gap: 22px;
+  padding-top: max(28px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(40px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1 { margin: 0; font: 800 40px/1 var(--display); letter-spacing: -.01em; }
+h1 span { color: var(--accent); }
+.lede { margin: 6px 0 0; color: var(--soft); max-width: 52ch; }
+.games { display: grid; gap: 12px; }
+a.game {
+  display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 16px; align-items: center;
+  background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px;
+  color: var(--ink); text-decoration: none;
+}
+a.game:hover, a.game:focus-visible { border-color: var(--accent); outline: none; }
+a.game img { width: 72px; height: 72px; border-radius: 16px; display: block; }
+a.game h2 { margin: 0; font: 800 22px/1.15 var(--display); }
+a.game p { margin: 4px 0 0; color: var(--soft); font-size: 15px; }
+h3 { margin: 0; font: 700 13px var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--soft); }
+ol { margin: 8px 0 0; padding-left: 22px; display: grid; gap: 6px; }
+.note { color: var(--soft); font-size: 14px; margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>GLAB <span>Games</span></h1>
+    <p class="lede">Free games that work offline. Open one, add it to your home screen, and it plays without internet.</p>
+  </header>
+
+  <nav class="games" aria-label="Games">
+    <a class="game" href="tictactoe/">
+      <img src="tictactoe/icons/icon-192.png" alt="">
+      <div><h2>Tic-Tac-Toe</h2><p>Play the phone on Easy, Medium or Unbeatable, or pass it to a friend.</p></div>
+    </a>
+    <a class="game" href="blackjack/">
+      <img src="blackjack/icons/icon-192.png" alt="">
+      <div><h2>Blackjack Coach</h2><p>Learn basic strategy, card counting and bet sizing. Practice money only.</p></div>
+    </a>
+  </nav>
+
+  <section>
+    <h3>Install a game on your phone</h3>
+    <ol>
+      <li>Tap a game above to open it.</li>
+      <li><b>iPhone:</b> in Safari, tap the Share button, then <b>Add to Home Screen</b>.</li>
+      <li><b>Android:</b> in Chrome, tap the menu (⋮), then <b>Install app</b>.</li>
+      <li>Open it once from the new icon while online. After that it works anywhere.</li>
+    </ol>
+  </section>
+  <p class="note">Install each game from its own page, not from this one.</p>
+</div>
+</body>
+</html>

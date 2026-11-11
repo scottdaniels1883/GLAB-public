@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tic-Tac-Toe</title>
+<meta name="theme-color" content="#1f2726">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tic-Tac-Toe">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;600;700&display=swap">
+<style>
+/* Layout: one phone screen. Score strip on top, the grid filling the middle, controls at the thumb.
+   Light = graph-paper notebook in pencil and ink; dark = slate with chalk. */
+:root {
+  --bg: #eef1ec;
+  --paper: #fbfcf8;
+  --grid: rgba(60, 110, 90, .10);
+  --ink: #1d2a26;
+  --soft: #5e6d67;
+  --line: #24332e;
+  --x: #d1452f;
+  --o: #2364aa;
+  --win: #e7b62d;
+  --chip: #e3e8e1;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161c1b; --paper: #1f2726; --grid: rgba(220, 240, 230, .05); --ink: #eef3ef; --soft: #9daca6;
+    --line: #dfe7e2; --x: #ff7a63; --o: #6fb0f5; --win: #f2cb55; --chip: #2a3432; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161c1b; --paper: #1f2726; --grid: rgba(220, 240, 230, .05); --ink: #eef3ef; --soft: #9daca6;
+  --line: #dfe7e2; --x: #ff7a63; --o: #6fb0f5; --win: #f2cb55; --chip: #2a3432; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.4 var(--body);
+  -webkit-tap-highlight-color: transparent;
+}
+.app {
+  height: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 14px;
+  padding-top: max(14px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { margin: 0; font: 800 28px/1 var(--display); letter-spacing: -.01em; }
+h1 .x { color: var(--x); } h1 .o { color: var(--o); }
+
+.modes { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg { display: inline-flex; background: var(--chip); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg button {
+  border: 0; background: transparent; color: var(--soft); font: 600 13px/1 var(--body);
+  padding: 9px 12px; border-radius: 999px; min-height: 36px; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+
+.score { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.tile {
+  background: var(--paper); border-radius: 14px; padding: 10px 12px; display: grid; gap: 2px;
+  border: 2px solid transparent; transition: border-color .2s;
+}
+.tile .who { font: 600 12px/1.2 var(--body); color: var(--soft); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .n { font: 800 30px/1 var(--display); font-variant-numeric: tabular-nums; }
+.tile.x .n { color: var(--x); } .tile.o .n { color: var(--o); }
+.tile.turn.x { border-color: var(--x); } .tile.turn.o { border-color: var(--o); }
+
+.stage { display: grid; place-items: center; min-height: 0; gap: 12px; align-content: center; }
+.status { font: 700 20px/1.2 var(--display); text-align: center; min-height: 1.2em; }
+.status .x { color: var(--x); } .status .o { color: var(--o); }
+.board-wrap {
+  position: relative;
+  width: min(100%, 58vh, 440px);
+  aspect-ratio: 1;
+  max-width: 100%;
+  background-color: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 16px 16px;
+  border-radius: 20px;
+  padding: 6%;
+}
+.board { position: relative; width: 100%; height: 100%; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); }
+.board svg.grid, .board svg.strike { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.grid line { stroke: var(--line); stroke-width: 2.2; stroke-linecap: round; }
+.cell {
+  border: 0; background: transparent; padding: 14%; cursor: pointer; touch-action: manipulation;
+  display: grid; place-items: center; border-radius: 12px; position: relative; z-index: 1;
+}
+.cell:disabled { cursor: default; }
+.cell svg { width: 100%; height: 100%; overflow: visible; }
+.cell .m { fill: none; stroke-linecap: round; stroke-width: 11; }
+.cell .m.x { stroke: var(--x); } .cell .m.o { stroke: var(--o); }
+.cell.ghost .m { opacity: .22; }
+.cell.dim .m { opacity: .25; transition: opacity .3s; }
+.draw path, .draw circle { stroke-dasharray: 1; stroke-dashoffset: 1; animation: ink .28s ease-out forwards; }
+.draw path:nth-child(2) { animation-delay: .14s; }
+@keyframes ink { to { stroke-dashoffset: 0; } }
+.strike line { stroke: var(--win); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: ink .35s ease-out .1s forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .draw path, .draw circle, .strike line { animation: none; stroke-dashoffset: 0; }
+}
+
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn {
+  font: 700 16px/1 var(--body); border-radius: 14px; min-height: 52px; cursor: pointer;
+  border: 2px solid var(--line); background: transparent; color: var(--ink); touch-action: manipulation;
+}
+.btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn:disabled { opacity: .35; cursor: default; }
+button:focus-visible { outline: 3px solid var(--o); outline-offset: 2px; }
+.foot { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 13px; color: var(--soft); }
+.link { border: 0; background: none; color: var(--soft); font: 600 13px var(--body); text-decoration: underline; cursor: pointer; padding: 8px 0; }
+.confirm { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; justify-content: space-between; background: var(--paper); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.confirm .row { display: flex; gap: 8px; }
+.confirm button { min-height: 40px; padding: 0 14px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1><span class="x">Tic</span>-Tac-<span class="o">Toe</span></h1>
+    <div class="modes">
+      <div class="seg" role="group" aria-label="Opponent">
+        <button id="m-cpu" aria-pressed="true">vs Phone</button>
+        <button id="m-2p" aria-pressed="false">2 Players</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="score" aria-label="Score">
+    <div class="tile x" id="t-x"><span class="who" id="n-x">You · X</span><span class="n" id="s-x">0</span></div>
+    <div class="tile" id="t-d"><span class="who">Draws</span><span class="n" id="s-d">0</span></div>
+    <div class="tile o" id="t-o"><span class="who" id="n-o">Phone · O</span><span class="n" id="s-o">0</span></div>
+  </section>
+
+  <main class="stage">
+    <div class="status" id="status" aria-live="polite"></div>
+    <div class="board-wrap">
+      <div class="board" id="board">
+        <svg class="grid" viewBox="0 0 300 300" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="100" y1="6" x2="100" y2="294"></line>
+          <line x1="200" y1="6" x2="200" y2="294"></line>
+          <line x1="6" y1="100" x2="294" y2="100"></line>
+          <line x1="6" y1="200" x2="294" y2="200"></line>
+        </svg>
+      </div>
+    </div>
+    <div class="seg" role="group" aria-label="Difficulty" id="levels">
+      <button data-level="easy" aria-pressed="false">Easy</button>
+      <button data-level="medium" aria-pressed="true">Medium</button>
+      <button data-level="hard" aria-pressed="false">Unbeatable</button>
+    </div>
+  </main>
+
+  <div class="controls">
+    <button class="btn" id="undo">Undo</button>
+    <button class="btn primary" id="again">New game</button>
+    <div class="foot" id="foot">
+      <span id="first">X goes first</span>
+      <button class="link" id="reset">Reset score</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ENGINE START
+const TTT = (function () {
+  const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  function winner(b) {
+    for (const l of LINES) { const [a, c, d] = l; if (b[a] && b[a] === b[c] && b[a] === b[d]) return { p: b[a], line: l }; }
+    return b.every(Boolean) ? { p: 'draw' } : null;
+  }
+  const free = b => b.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+  const other = p => p === 'X' ? 'O' : 'X';
+
+  // Minimax with depth so the computer wins fast and loses slow.
+  function score(b, me, turn, depth) {
+    const w = winner(b);
+    if (w) return w.p === 'draw' ? 0 : (w.p === me ? 10 - depth : depth - 10);
+    let best = turn === me ? -Infinity : Infinity;
+    for (const i of free(b)) {
+      b[i] = turn; const s = score(b, me, other(turn), depth + 1); b[i] = null;
+      best = turn === me ? Math.max(best, s) : Math.min(best, s);
+    }
+    return best;
+  }
+  function bestMoves(b, me) {
+    let best = -Infinity, moves = [];
+    for (const i of free(b)) {
+      b[i] = me; const s = score(b, me, other(me), 1); b[i] = null;
+      if (s > best) { best = s; moves = [i]; } else if (s === best) moves.push(i);
+    }
+    return moves;
+  }
+  function finishing(b, p) {
+    for (const i of free(b)) { b[i] = p; const w = winner(b); b[i] = null; if (w && w.p === p) return i; }
+    return -1;
+  }
+  function pickMove(b, me, level, rnd = Math.random) {
+    const f = free(b), any = arr => arr[Math.floor(rnd() * arr.length)];
+    if (level === 'easy') {
+      const win = finishing(b, me);
+      return win >= 0 && rnd() < 0.5 ? win : any(f);
+    }
+    if (level === 'medium') {
+      const win = finishing(b, me); if (win >= 0) return win;
+      const block = finishing(b, other(me)); if (block >= 0) return block;
+      return rnd() < 0.6 ? any(bestMoves(b, me)) : any(f);
+    }
+    return any(bestMoves(b, me));
+  }
+  return { LINES, winner, free, other, pickMove };
+})();
+if (typeof module !== 'undefined') module.exports = TTT;
+// ENGINE END
+</script>
+
+<script>
+(function () {
+  const $ = s => document.querySelector(s);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } },
+  };
+  const saved = store.get('ttt', {});
+  const st = {
+    mode: saved.mode || 'cpu',
+    level: saved.level || 'medium',
+    scores: saved.scores || { cpu: { X: 0, O: 0, D: 0 }, '2p': { X: 0, O: 0, D: 0 } },
+    starter: saved.starter || 'X',
+    board: Array(9).fill(null),
+    turn: 'X',
+    history: [],
+    over: null,
+    thinking: false,
+    last: -1,
+    confirm: false,
+  };
+  st.turn = st.starter;
+  const save = () => store.set('ttt', { mode: st.mode, level: st.level, scores: st.scores, starter: st.starter });
+
+  const HUMAN = 'X', CPU = 'O';
+  const markSVG = (p, animate) => p === 'X'
+    ? `<svg viewBox="0 0 100 100" class="${animate ? 'draw' : ''}" aria-hidden="true"><path class="m x" pathLength="1" d="M18 18 L82 82"></path><path class="m x" pathLength="1" d="M82 18 L18 82"></path></svg>`
+    : `<svg viewBox="0 0 100 100" class="${animate ? 'draw' : ''}" aria-hidden="true"><circle class="m o" pathLength="1" cx="50" cy="50" r="33" transform="rotate(-90 50 50)"></circle></svg>`;
+
+  // Build cells once.
+  const boardEl = $('#board');
+  const cells = [];
+  for (let i = 0; i < 9; i++) {
+    const c = document.createElement('button');
+    c.className = 'cell';
+    c.addEventListener('click', () => humanMove(i));
+    boardEl.appendChild(c); cells.push(c);
+  }
+  const strike = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  strike.setAttribute('class', 'strike'); strike.setAttribute('viewBox', '0 0 300 300'); strike.setAttribute('aria-hidden', 'true');
+  boardEl.appendChild(strike);
+
+  const name = p => st.mode === 'cpu' ? (p === HUMAN ? 'You' : 'Phone') : 'Player ' + p;
+  const tag = p => `<span class="${p.toLowerCase()}">${p}</span>`;
+
+  function render() {
+    const sc = st.scores[st.mode];
+    $('#s-x').textContent = sc.X; $('#s-o').textContent = sc.O; $('#s-d').textContent = sc.D;
+    const label = p => st.mode === 'cpu' ? name(p) + ' · ' + p : name(p);
+    $('#n-x').textContent = label('X'); $('#n-o').textContent = label('O');
+    $('#t-x').classList.toggle('turn', !st.over && st.turn === 'X');
+    $('#t-o').classList.toggle('turn', !st.over && st.turn === 'O');
+    $('#m-cpu').setAttribute('aria-pressed', st.mode === 'cpu');
+    $('#m-2p').setAttribute('aria-pressed', st.mode === '2p');
+    $('#levels').hidden = st.mode !== 'cpu';
+    document.querySelectorAll('#levels button').forEach(b => b.setAttribute('aria-pressed', b.dataset.level === st.level));
+
+    const w = st.over;
+    cells.forEach((c, i) => {
+      const v = st.board[i];
+      const want = v ? v + (i === st.last ? '*' : '') : '';
+      if (c.dataset.v !== want) { c.innerHTML = v ? markSVG(v, i === st.last) : ''; c.dataset.v = want; }
+      c.disabled = !!v || !!w || st.thinking || (st.mode === 'cpu' && st.turn === CPU);
+      c.classList.toggle('dim', !!(w && w.line && !w.line.includes(i)));
+      c.setAttribute('aria-label', `Square ${i + 1}: ${v || 'empty'}`);
+    });
+
+    if (w && w.line) {
+      const pt = k => [50 + (k % 3) * 100, 50 + Math.floor(k / 3) * 100];
+      const [a, b] = [pt(w.line[0]), pt(w.line[2])];
+      const dx = (b[0] - a[0]) * 0.18, dy = (b[1] - a[1]) * 0.18;
+      if (!strike.firstChild) strike.innerHTML = `<line pathLength="1" x1="${a[0] - dx}" y1="${a[1] - dy}" x2="${b[0] + dx}" y2="${b[1] + dy}"></line>`;
+    } else strike.innerHTML = '';
+
+    let s;
+    if (w) s = w.p === 'draw' ? 'Draw. Nobody wins.' : (st.mode === 'cpu' ? (w.p === HUMAN ? 'You win!' : 'The phone wins.') : `Player ${tag(w.p)} wins!`);
+    else if (st.mode === 'cpu') s = st.turn === HUMAN ? `Your turn: tap a square for ${tag('X')}` : 'Phone is thinking…';
+    else s = `Player ${tag(st.turn)}'s turn`;
+    $('#status').innerHTML = s;
+
+    $('#undo').disabled = !st.history.length || st.thinking;
+    $('#again').textContent = w ? 'Play again' : 'New game';
+    const nextFirst = st.starter;
+    const firstEl = $('#first');
+    if (firstEl) firstEl.textContent = st.mode === 'cpu' ? (nextFirst === HUMAN ? 'You go first this game' : 'Phone goes first this game') : `${nextFirst} goes first this game`;
+
+    const foot = $('#foot');
+    if (st.confirm) {
+      foot.className = 'confirm';
+      foot.innerHTML = `<span>Reset the ${st.mode === 'cpu' ? 'vs Phone' : '2 Players'} score?</span><span class="row"><button class="btn" id="no">Keep</button><button class="btn primary" id="yes">Reset</button></span>`;
+      $('#no').onclick = () => { st.confirm = false; restoreFoot(); render(); };
+      $('#yes').onclick = () => { st.scores[st.mode] = { X: 0, O: 0, D: 0 }; st.confirm = false; save(); restoreFoot(); render(); };
+    }
+  }
+  function restoreFoot() {
+    const foot = $('#foot');
+    foot.className = 'foot';
+    foot.innerHTML = '<span id="first"></span><button class="link" id="reset">Reset score</button>';
+    $('#reset').onclick = askReset;
+  }
+  const askReset = () => { st.confirm = true; render(); };
+
+  function place(i) {
+    st.history.push({ board: st.board.slice(), turn: st.turn, last: st.last });
+    st.board[i] = st.turn; st.last = i;
+    const w = TTT.winner(st.board);
+    if (w) {
+      st.over = w;
+      const sc = st.scores[st.mode];
+      if (w.p === 'draw') sc.D++; else sc[w.p]++;
+      st.starter = TTT.other(st.starter);
+      save();
+      if (navigator.vibrate) { try { navigator.vibrate(w.p === 'draw' ? 30 : [40, 60, 40]); } catch (e) { /* ignore */ } }
+    } else st.turn = TTT.other(st.turn);
+  }
+
+  function humanMove(i) {
+    if (st.board[i] || st.over || st.thinking) return;
+    if (st.mode === 'cpu' && st.turn !== HUMAN) return;
+    place(i); render();
+    cpuMaybe();
+  }
+
+  let timer = null;
+  function cpuMaybe() {
+    if (st.mode !== 'cpu' || st.over || st.turn !== CPU) return;
+    st.thinking = true; render();
+    timer = setTimeout(() => {
+      timer = null; st.thinking = false;
+      place(TTT.pickMove(st.board.slice(), CPU, st.level));
+      render();
+    }, 450);
+  }
+
+  function newGame() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (!st.over && st.history.length) st.starter = TTT.other(st.starter);
+    st.board = Array(9).fill(null); st.history = []; st.over = null; st.thinking = false; st.last = -1;
+    st.turn = st.starter;
+    cells.forEach(c => { c.dataset.v = ''; c.innerHTML = ''; });
+    strike.innerHTML = '';
+    save(); render(); cpuMaybe();
+  }
+
+  function undo() {
+    if (!st.history.length || st.thinking) return;
+    if (st.over) {
+      const sc = st.scores[st.mode];
+      if (st.over.p === 'draw') sc.D--; else sc[st.over.p]--;
+      st.starter = TTT.other(st.starter);
+      st.over = null;
+    }
+    // Against the phone, undo goes back to your last move.
+    let prev = st.history.pop();
+    if (st.mode === 'cpu') while (prev.turn !== HUMAN && st.history.length) prev = st.history.pop();
+    st.board = prev.board; st.turn = prev.turn; st.last = -1;
+    cells.forEach(c => { c.dataset.v = ''; });
+    strike.innerHTML = '';
+    save(); render(); cpuMaybe();
+  }
+
+  $('#again').onclick = newGame;
+  $('#undo').onclick = undo;
+  $('#reset').onclick = askReset;
+  $('#m-cpu').onclick = () => { if (st.mode !== 'cpu') { st.mode = 'cpu'; st.confirm = false; restoreFoot(); newGameFresh(); } };
+  $('#m-2p').onclick = () => { if (st.mode !== '2p') { st.mode = '2p'; st.confirm = false; restoreFoot(); newGameFresh(); } };
+  document.querySelectorAll('#levels button').forEach(b => b.onclick = () => {
+    if (st.level === b.dataset.level) return;
+    st.level = b.dataset.level; newGameFresh();
+  });
+  function newGameFresh() { st.history = []; st.over = null; newGame(); }
+
+  render();
+  cpuMaybe();
+})();
+</script>
+
+<script>
+// Save the game on the phone for offline play (only when served from a real web address).
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* not available here */ });
+  });
+}
+</script>
+</body>
+</html>

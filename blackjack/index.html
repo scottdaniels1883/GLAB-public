@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Blackjack Coach</title>
+<meta name="theme-color" content="#0a2b26">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Blackjack">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,600;6..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a felt table with a leather rail on top, the coach's notes beside it, the lesson book below. One deliberate dark world. */
+:root {
+  --felt: #0e3a33;
+  --felt-deep: #0a2b26;
+  --rail: #26160f;
+  --brass: #d1a954;
+  --ivory: #f4eedf;
+  --ink: #ebe6d8;
+  --muted: #9bb5ac;
+  --line: #2b5a51;
+  --ruby: #c0392b;
+  --card-ink: #1b1a17;
+  --good: #6cc890;
+  --bad: #ec7d63;
+  --warn: #e8c15a;
+  --c-hit: #3d4d4a;
+  --c-stand: #8c3b2e;
+  --c-double: #2f6f9e;
+  --c-split: #6a4c93;
+  --c-surr: #8a6a1f;
+  --display: "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--felt-deep); }
+body {
+  margin: 0;
+  color: var(--ink);
+  font: 15px/1.5 var(--body);
+  background:
+    radial-gradient(120% 70% at 50% 0%, var(--felt) 0%, var(--felt-deep) 70%) fixed,
+    var(--felt-deep);
+}
+.wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-top: max(18px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(48px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 20px;
+}
+header.top {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px;
+  border-bottom: 1px solid var(--line); padding-bottom: 12px;
+}
+h1 {
+  font-family: var(--display); font-weight: 800; font-size: clamp(30px, 6vw, 44px);
+  margin: 0; letter-spacing: 0.01em; line-height: 1; text-wrap: balance;
+}
+h1 em { font-style: normal; color: var(--brass); }
+.rules { font: 12px/1.4 var(--mono); color: var(--muted); letter-spacing: 0.02em; }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.main { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .main { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: start; } }
+
+/* The table */
+.table {
+  border-radius: 22px 22px 14px 14px;
+  border: 10px solid var(--rail);
+  box-shadow: inset 0 0 0 1px rgba(209,169,84,.35), 0 18px 40px rgba(0,0,0,.35);
+  background: radial-gradient(90% 80% at 50% 10%, #12483f 0%, var(--felt) 60%, var(--felt-deep) 100%);
+  padding: 16px;
+  display: grid; gap: 14px;
+  min-width: 0;
+}
+.bankbar { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: baseline; }
+.bankbar .big { font-family: var(--mono); font-size: 22px; font-weight: 600; color: var(--ivory); }
+.shoe { flex: 1 1 140px; min-width: 120px; }
+.shoe .meter { height: 6px; background: var(--felt-deep); border-radius: 3px; overflow: hidden; margin-top: 4px; border: 1px solid var(--line); }
+.shoe .meter i { display: block; height: 100%; background: var(--brass); width: 0; transition: width .3s; }
+
+.zone { display: grid; gap: 6px; justify-items: center; min-height: 128px; }
+.zone .who { display: flex; gap: 8px; align-items: baseline; }
+.arc {
+  text-align: center; font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .22em;
+  color: rgba(209,169,84,.75); text-transform: uppercase; border-top: 1px solid rgba(209,169,84,.3);
+  border-bottom: 1px solid rgba(209,169,84,.3); padding: 4px 0;
+}
+.cards { display: flex; justify-content: center; min-height: 92px; }
+.card {
+  width: 62px; height: 88px; border-radius: 7px; background: var(--ivory); color: var(--card-ink);
+  box-shadow: 0 2px 0 rgba(0,0,0,.25), 0 6px 14px rgba(0,0,0,.3); position: relative;
+  margin-left: -18px; flex: none; animation: deal .28s ease-out both;
+}
+.card:first-child { margin-left: 0; }
+.card.red { color: var(--ruby); }
+.card .ix { position: absolute; top: 5px; left: 6px; font: 600 15px/1 var(--mono); text-align: center; }
+.card .ix small { display: block; font-size: 13px; margin-top: 2px; }
+.card .pip { position: absolute; inset: 0; display: grid; place-items: center; font-size: 30px; padding-top: 10px; }
+.card.back {
+  background: repeating-linear-gradient(45deg, #7a1f17 0 6px, #8e2a20 6px 12px);
+  border: 4px solid var(--ivory);
+}
+@keyframes deal { from { transform: translateY(-14px) rotate(-3deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .card { animation: none; } .shoe .meter i { transition: none; } }
+
+.hands { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+.hand { display: grid; gap: 6px; justify-items: center; padding: 8px 10px; border-radius: 12px; border: 1px solid transparent; min-width: 0; }
+.hand.active { border-color: var(--brass); background: rgba(209,169,84,.07); }
+.tot { font: 600 13px/1 var(--mono); background: var(--felt-deep); color: var(--ivory); padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line); }
+.chip-res { font: 600 11px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; }
+.res-win { background: var(--good); color: #0b2a1b; }
+.res-lose { background: var(--bad); color: #2b0d06; }
+.res-push { background: var(--muted); color: #10221e; }
+
+/* Controls */
+.controls { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button {
+  font: 600 14px/1 var(--body); border-radius: 10px; border: 1px solid var(--line);
+  background: var(--felt-deep); color: var(--ink); padding: 12px 14px; cursor: pointer; min-height: 44px;
+}
+button:hover:not(:disabled) { border-color: var(--brass); }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+button:disabled { opacity: .35; cursor: not-allowed; }
+button.primary { background: var(--brass); color: #21170a; border-color: var(--brass); }
+.act { flex: 1 1 88px; }
+.chip {
+  width: 50px; height: 50px; border-radius: 50%; padding: 0; font: 600 13px/1 var(--mono);
+  border: 4px dashed rgba(255,255,255,.55); color: #fff;
+}
+.chip.c5 { background: #a33a2c; } .chip.c10 { background: #2b5f8f; } .chip.c25 { background: #2f7a4f; } .chip.c100 { background: #232323; }
+.betline { display: flex; gap: 10px; align-items: baseline; }
+.betline .big { font: 600 20px var(--mono); color: var(--ivory); }
+
+/* Side panels */
+.side { display: grid; gap: 16px; min-width: 0; }
+.panel {
+  background: rgba(10,43,38,.75); border: 1px solid var(--line); border-radius: 14px; padding: 14px;
+  display: grid; gap: 10px; min-width: 0;
+}
+.panel h2 { font: 600 18px/1.2 var(--display); margin: 0; color: var(--ivory); }
+.coach-play { font-size: 15px; }
+.coach-play b.move { font-family: var(--display); font-size: 22px; color: var(--brass); display: block; line-height: 1.2; }
+.fb { border-radius: 10px; padding: 10px 12px; font-size: 14px; border: 1px solid var(--line); }
+.fb.ok { border-color: rgba(108,200,144,.6); background: rgba(108,200,144,.08); }
+.fb.no { border-color: rgba(236,125,99,.7); background: rgba(236,125,99,.08); }
+.fb.info { border-color: rgba(232,193,90,.6); background: rgba(232,193,90,.07); }
+.fb b { color: var(--ivory); }
+.dev { color: var(--warn); font-size: 12px; text-transform: uppercase; letter-spacing: .1em; }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px 14px; }
+.stats div { display: grid; }
+.stats .v { font: 600 18px var(--mono); color: var(--ivory); }
+.toggle { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; cursor: pointer; }
+.toggle input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--brass); flex: none; }
+.toggle small { display: block; color: var(--muted); font-size: 12px; }
+input[type=number] {
+  font: 600 16px var(--mono); width: 90px; padding: 10px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--felt-deep); color: var(--ink); min-height: 44px;
+}
+.mist { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+
+/* Lesson book */
+.book { display: grid; gap: 10px; }
+.book > h2 { font: 800 28px/1.1 var(--display); margin: 8px 0 0; text-wrap: balance; }
+details { background: rgba(10,43,38,.75); border: 1px solid var(--line); border-radius: 14px; }
+summary { cursor: pointer; padding: 14px 16px; font: 600 17px/1.3 var(--display); color: var(--ivory); list-style: none; display: flex; gap: 10px; align-items: baseline; }
+summary::-webkit-details-marker { display: none; }
+summary .n { font: 600 12px var(--mono); color: var(--brass); }
+details[open] summary { border-bottom: 1px solid var(--line); }
+.lesson { padding: 14px 16px 18px; display: grid; gap: 12px; }
+.lesson p, .lesson li { max-width: 68ch; }
+.lesson p { margin: 0; }
+.lesson ul, .lesson ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.lesson h3 { margin: 6px 0 0; font: 600 15px var(--body); color: var(--brass); }
+.scroll { overflow-x: auto; max-width: 100%; }
+table.chart { border-collapse: collapse; font: 600 12px/1 var(--mono); font-variant-numeric: tabular-nums; }
+table.chart th, table.chart td { padding: 6px 0; width: 34px; text-align: center; border: 1px solid var(--felt-deep); }
+table.chart th { color: var(--muted); font-weight: 600; }
+table.chart th.rowh { width: 52px; text-align: right; padding-right: 8px; }
+table.chart td { color: #fff; }
+.k-H { background: var(--c-hit); } .k-S { background: var(--c-stand); } .k-D, .k-Ds { background: var(--c-double); }
+.k-P { background: var(--c-split); } .k-R, .k-Rh { background: var(--c-surr); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -2px; background: var(--sw); }
+table.idx { border-collapse: collapse; font-size: 13px; }
+table.idx td, table.idx th { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+table.idx th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
+footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Blackjack <em>Coach</em></h1>
+    <div class="rules">6 decks · Dealer stands soft 17 · Blackjack pays 3:2 · Double after split · Late surrender</div>
+  </header>
+
+  <div class="main">
+    <section class="table" aria-label="Blackjack table">
+      <div class="bankbar">
+        <div><div class="label">Bankroll</div><div class="big" id="bank">$1,000</div></div>
+        <div><div class="label">This hand</div><div class="big" id="roundNet">—</div></div>
+        <div class="shoe"><div class="label" id="shoeLbl">Shoe</div><div class="meter"><i id="shoeBar"></i></div></div>
+      </div>
+
+      <div class="zone">
+        <div class="who"><span class="label">Dealer</span><span class="tot" id="dTot" hidden></span></div>
+        <div class="cards" id="dCards"></div>
+      </div>
+
+      <div class="arc">Insurance pays 2 to 1 · Dealer must stand on all 17s</div>
+
+      <div class="zone">
+        <div class="hands" id="pHands"></div>
+      </div>
+
+      <div class="controls" id="controls"></div>
+    </section>
+
+    <aside class="side">
+      <section class="panel" aria-live="polite">
+        <h2>Coach</h2>
+        <div id="coach" class="coach-play"></div>
+        <div id="feedback"></div>
+      </section>
+
+      <section class="panel" id="countPanel">
+        <h2>The count</h2>
+        <div class="stats">
+          <div><span class="label">Running count</span><span class="v" id="rc">0</span></div>
+          <div><span class="label">True count</span><span class="v" id="tc">0</span></div>
+          <div><span class="label">Decks left</span><span class="v" id="dl">6.0</span></div>
+          <div><span class="label">Your edge now</span><span class="v" id="edge">−0.4%</span></div>
+        </div>
+        <div class="row">
+          <label for="guess" class="label">Quiz yourself: running count?</label>
+        </div>
+        <div class="row">
+          <input type="number" id="guess" inputmode="numeric" step="1">
+          <button id="checkCount">Check</button>
+        </div>
+        <div id="countFb"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Settings</h2>
+        <label class="toggle" for="optHints"><input type="checkbox" id="optHints"><span>Show the book play before I act<small>Turn off to test yourself. You still get graded after every move.</small></span></label>
+        <label class="toggle" for="optCount"><input type="checkbox" id="optCount"><span>Show the count<small>Hide it and keep the count in your head, then use the quiz.</small></span></label>
+        <label class="toggle" for="optAdv"><input type="checkbox" id="optAdv"><span>Count-based plays (Illustrious 18 and Fab 4)<small>Changes the book play when the true count crosses an index.</small></span></label>
+        <div class="row"><button id="resetBank">Reset bankroll to $1,000</button><button id="resetStats">Clear stats</button></div>
+        <div id="resetConfirm"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Your session</h2>
+        <div class="stats">
+          <div><span class="label">Hands</span><span class="v" id="sHands">0</span></div>
+          <div><span class="label">Net result</span><span class="v" id="sNet">$0</span></div>
+          <div><span class="label">Play accuracy</span><span class="v" id="sAcc">—</span></div>
+          <div><span class="label">Bets on the ramp</span><span class="v" id="sRamp">—</span></div>
+        </div>
+        <div class="label">Recent mistakes</div>
+        <ol class="mist" id="mist"></ol>
+      </section>
+    </aside>
+  </div>
+
+  <section class="book">
+    <h2>The lesson book</h2>
+
+    <details open>
+      <summary><span class="n">1</span>The most profitable way to play: what's actually possible</summary>
+      <div class="lesson">
+        <p>Every blackjack decision has one mathematically best answer. Players who guess give the casino an edge of 2% or more. Players who follow <b>basic strategy</b> cut it to about <b>0.4%</b> under these rules. That means an average loss of about 40 cents per $100 wagered.</p>
+        <p>Basic strategy alone never makes blackjack profitable. Only <b>card counting</b> flips the edge to the player, and only in some hands. A well-played count with a 1-to-10 bet spread earns roughly <b>0.5% to 1.5%</b> on money wagered. The profit comes from betting big on the few hands where you have the edge, and small everywhere else.</p>
+        <h3>The path this app teaches</h3>
+        <ol>
+          <li>Learn basic strategy until your accuracy stays above 99%.</li>
+          <li>Learn to keep the running count with the count hidden, using the quiz.</li>
+          <li>Convert to the true count and size your bets with the ramp the coach suggests.</li>
+          <li>Add the count-based plays in Settings. They are worth about another 0.1% to 0.2%.</li>
+        </ol>
+      </div>
+    </details>
+
+    <details>
+      <summary><span class="n">2</span>Basic strategy chart for these rules</summary>
+      <div class="lesson">
+        <p>Read across from your hand and down from the dealer's upcard. This is the same chart the coach uses to grade you.</p>
+        <div class="legend">
+          <span style="--sw: var(--c-hit)">H Hit</span><span style="--sw: var(--c-stand)">S Stand</span>
+          <span style="--sw: var(--c-double)">D Double (else hit)</span><span style="--sw: var(--c-double)">Ds Double (else stand)</span>
+          <span style="--sw: var(--c-split)">P Split</span><span style="--sw: var(--c-surr)">Rh Surrender (else hit)</span>
+        </div>
+        <h3>Hard totals</h3><div class="scroll" id="chartHard"></div>
+        <h3>Soft totals (hands with an ace counted as 11)</h3><div class="scroll" id="chartSoft"></div>
+        <h3>Pairs</h3><div class="scroll" id="chartPair"></div>
+        <h3>Why the chart looks like this</h3>
+        <ul>
+          <li><b>The dealer has no choices.</b> They must hit until 17. Against a 2 through 6 they often end up drawing to a bust, so you stand on weak totals and let them break.</li>
+          <li><b>Against 7 through ace, assume the dealer makes 17 or better.</b> Standing on 12 to 16 then loses too often, so you hit.</li>
+          <li><b>Double when you're ahead.</b> Doubling puts more money down in the spots where you win more than you lose, like 11 against a 6.</li>
+          <li><b>Split to escape bad totals or to press good ones.</b> Two 8s make 16, the worst hand. Two 8-starts are much better. Two aces make two shots at 21.</li>
+          <li><b>Surrender is the escape hatch.</b> Giving up half your bet beats a hand that wins less than 25% of the time.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary><span class="n">3</span>Counting cards with Hi-Lo</summary>
+      <div class="lesson">
+        <p>Small cards help the dealer, who must hit stiff hands. Tens and aces help you: more blackjacks (paid 3:2), better doubles, and more dealer busts. Counting tracks which kind is left in the shoe.</p>
+        <table class="idx">
+          <tr><th>Cards</th><th>Count</th><th>Why</th></tr>
+          <tr><td class="num">2 3 4 5 6</td><td class="num">+1</td><td>A small card left the shoe, which helps you</td></tr>
+          <tr><td class="num">7 8 9</td><td class="num">0</td><td>Neutral</td></tr>
+          <tr><td class="num">10 J Q K A</td><td class="num">−1</td><td>A big card left the shoe, which hurts you</td></tr>
+        </table>
+        <h3>Running count to true count</h3>
+        <p>Add up every card you see. That's the <b>running count</b>. A +6 means more with one deck left than with five, so divide by the decks remaining. That gives the <b>true count</b>. A running count of +6 with 2 decks left is a true count of +3.</p>
+        <h3>What the true count is worth</h3>
+        <p>Each +1 of true count is worth about +0.5% to the player. With a starting edge of about −0.4%, you are roughly even at a true count of +1. You have an advantage from +2 upward.</p>
+        <h3>Practice routine</h3>
+        <ul>
+          <li>Hide the count in Settings and keep it in your head.</li>
+          <li>Count the dealer's hole card when it's turned over, not before.</li>
+          <li>Use the quiz before each bet. Aim for 20 correct in a row.</li>
+          <li>Count in pairs: a 5 and a K cancel to 0, so you can skip both.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary><span class="n">4</span>How to size your bets</summary>
+      <div class="lesson">
+        <p>This is where the money is made. The coach's ramp, in units of the $10 table minimum:</p>
+        <table class="idx">
+          <tr><th>True count</th><th>Bet</th><th>Approx. edge</th></tr>
+          <tr><td class="num">+1 or lower</td><td class="num">1 unit ($10)</td><td class="num">−0.4% to 0%</td></tr>
+          <tr><td class="num">+2</td><td class="num">2 units ($20)</td><td class="num">+0.6%</td></tr>
+          <tr><td class="num">+3</td><td class="num">4 units ($40)</td><td class="num">+1.1%</td></tr>
+          <tr><td class="num">+4</td><td class="num">6 units ($60)</td><td class="num">+1.6%</td></tr>
+          <tr><td class="num">+5</td><td class="num">8 units ($80)</td><td class="num">+2.1%</td></tr>
+          <tr><td class="num">+6 or higher</td><td class="num">10 units ($100)</td><td class="num">+2.6% and up</td></tr>
+        </table>
+        <h3>Bankroll and risk</h3>
+        <ul>
+          <li>Swings are large even with an edge. A common guideline is a bankroll of at least 500 to 1,000 times your minimum bet to keep the risk of going broke low.</li>
+          <li>With $1,000 here, a $10 unit is aggressive. That's intentional, so you can feel the variance quickly.</li>
+          <li>Never chase losses by raising bets at a negative count. The count decides the bet, not your mood.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary><span class="n">5</span>Count-based plays (Illustrious 18 and Fab 4)</summary>
+      <div class="lesson">
+        <p>At some counts the chart's answer flips. Turn these on in Settings and the coach applies them. The number is the true count at which you switch to the listed play.</p>
+        <div class="scroll" id="devTable"></div>
+      </div>
+    </details>
+
+    <details>
+      <summary><span class="n">6</span>Before you play for real money</summary>
+      <div class="lesson">
+        <ul>
+          <li><b>Pick the table carefully.</b> Never play where blackjack pays 6:5. It adds about 1.4% to the house edge, more than counting can overcome. Avoid continuous shuffling machines; they make counting useless.</li>
+          <li><b>Skip side bets.</b> Most carry house edges of 3% to 10% or more.</li>
+          <li><b>Expect pushback.</b> Counting in your head is legal in the US, but casinos can refuse your action or ask you to leave.</li>
+          <li><b>Variance is real.</b> Even perfect counters have losing months. Play only with money you can afford to lose, and set a loss limit before you sit down.</li>
+          <li>If gambling stops being fun, help is available at 1-800-GAMBLER.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <footer>Part of GLAB. Practice money only. Strategy computed for 6 decks, S17, DAS, late surrender, 3:2.</footer>
+</div>
+
+<script>
+// ENGINE START
+const BJ = (function () {
+  const SUITS = ['♠', '♥', '♦', '♣'];
+  const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  const rv = r => r === 'A' ? 11 : (r === '10' || r === 'J' || r === 'Q' || r === 'K') ? 10 : +r;
+  const hiLo = r => { const v = rv(r); return v >= 10 ? -1 : (v <= 6 ? 1 : 0); };
+  const upName = r => { const v = rv(r); return v === 11 ? 'an ace' : v === 10 ? 'a 10' : (v === 8 ? 'an 8' : 'a ' + v); };
+
+  function total(cards) {
+    let t = 0, a = 0;
+    for (const c of cards) { t += rv(c.r); if (c.r === 'A') a++; }
+    while (t > 21 && a) { t -= 10; a--; }
+    return { total: t, soft: a > 0 };
+  }
+  const isBJ = cards => cards.length === 2 && total(cards).total === 21;
+
+  function rng32(seed) {
+    let s = seed >>> 0;
+    return function () {
+      s = (s + 0x6D2B79F5) >>> 0; let t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  class Shoe {
+    constructor(decks = 6, pen = 0.75, rng = Math.random) { this.decks = decks; this.pen = pen; this.rng = rng; this.shuffle(); }
+    shuffle() {
+      this.cards = [];
+      for (let d = 0; d < this.decks; d++) for (const s of SUITS) for (const r of RANKS) this.cards.push({ r, s });
+      for (let i = this.cards.length - 1; i > 0; i--) {
+        const j = Math.floor(this.rng() * (i + 1));
+        [this.cards[i], this.cards[j]] = [this.cards[j], this.cards[i]];
+      }
+      this.rc = 0;
+    }
+    get size() { return this.decks * 52; }
+    needsShuffle() { return this.cards.length <= this.size * (1 - this.pen); }
+    draw(seen = true) { const c = this.cards.pop(); if (seen) this.rc += hiLo(c.r); return c; }
+    see(c) { this.rc += hiLo(c.r); }
+    decksLeft() { return this.cards.length / 52; }
+    trueCount() { return this.rc / Math.max(this.decksLeft(), 0.25); }
+  }
+
+  // Basic strategy: 6 decks, S17, DAS, late surrender, no resplit aces.
+  // Returns { a: 'H'|'S'|'D'|'P'|'R', why }.
+  function basic(cards, up, o) {
+    const u = rv(up);
+    const { total: t, soft } = total(cards);
+    const dn = upName(up);
+    const dbl = (fb) => o.canDouble ? 'D' : fb;
+    const pair = cards.length === 2 && rv(cards[0].r) === rv(cards[1].r);
+
+    if (pair && o.canSplit) {
+      const p = rv(cards[0].r);
+      const P = why => ({ a: 'P', why });
+      if (p === 11) return P('Two aces as one hand is a soft 12. Split them and each ace starts a hand worth 11, with a good shot at 21.');
+      if (p === 8) return P('Two 8s make 16, the worst total in blackjack. Split and you start two hands at 8, which loses less than playing the 16.');
+      if (p === 9 && u !== 7 && u !== 10 && u !== 11) return P(`Two 9-starts beat a single 18 against ${dn}. Against a 7 you keep 18, because the dealer's most likely total is 17.`);
+      if (p === 7 && u <= 7) return P(`14 is a weak hand. Against ${dn}, two hands starting at 7 do better because the dealer is likely to bust or finish low.`);
+      if (p === 6 && u <= 6) return P(`12 is a stiff. Against a weak dealer card like ${dn}, splitting gives you two hands while the dealer is likely to bust.`);
+      if (p === 4 && (u === 5 || u === 6)) return P(`Split 4s only against a 5 or 6. The dealer busts most often there, and you can double after splitting if you catch a 5, 6 or 7.`);
+      if ((p === 2 || p === 3) && u <= 7) return P(`Small pairs make poor totals. Against ${dn}, two hands that start with a ${p} and can double after the split come out ahead.`);
+    }
+
+    if (o.canSurrender && !soft) {
+      if (t === 16 && u >= 9) return { a: 'R', why: `16 against ${dn} wins less than 25% of the time whether you hit or stand. Surrender loses only half the bet, which is better.` };
+      if (t === 15 && u === 10) return { a: 'R', why: '15 against a 10 wins about 23% of the time. Giving up half your bet costs less than playing it out.' };
+    }
+
+    if (soft) {
+      if (t >= 19) return { a: 'S', why: `Soft ${t} is a strong total. Stand and make the dealer beat it.` };
+      if (t === 18) {
+        if (u >= 3 && u <= 6) return { a: dbl('S'), why: `Soft 18 against ${dn}: the dealer is weak, and one more card can't bust you. Double to get more money out while you're the favorite.${o.canDouble ? '' : ' You can\'t double now, so stand.'}` };
+        if (u === 2 || u === 7 || u === 8) return { a: 'S', why: `18 is ahead of what the dealer usually makes with ${dn}. Stand.` };
+        return { a: 'H', why: `18 isn't enough against ${dn}, where the dealer often makes 19 or 20. You can't bust a soft hand with one card, so take one to improve.` };
+      }
+      if (t === 17) return (u >= 3 && u <= 6) ? { a: dbl('H'), why: `Soft 17 is a weak total but can't bust on one card. Against ${dn}, doubling earns more than just hitting.` } : { a: 'H', why: 'Soft 17 is too weak to stand on. Hit, since one card can only improve it or leave it soft.' };
+      if (t >= 15) return (u >= 4 && u <= 6) ? { a: dbl('H'), why: `Against ${dn}, the dealer busts often. Double your soft ${t} because you can't bust on one card.` } : { a: 'H', why: `Soft ${t} needs improving and can't bust on the next card. Hit.` };
+      if (t >= 13) return (u === 5 || u === 6) ? { a: dbl('H'), why: `The dealer is weakest showing a 5 or 6. Double your soft ${t}, since no single card can bust it.` } : { a: 'H', why: `Soft ${t} is weak and safe to hit. Take a card.` };
+      return { a: 'H', why: 'A soft 12 is two aces. You can\'t bust, so hit.' };
+    }
+
+    if (t >= 17) return { a: 'S', why: `Hard ${t}: any card 5 or higher busts you. Stand.` };
+    if (t >= 13) return u <= 6
+      ? { a: 'S', why: `Against ${dn}, the dealer must hit a stiff hand and busts about 35 to 42% of the time. Don't risk busting your ${t} first.` }
+      : { a: 'H', why: `With ${dn} showing, the dealer usually finishes on 17 or better. Standing on ${t} loses more than hitting does.` };
+    if (t === 12) return (u >= 4 && u <= 6)
+      ? { a: 'S', why: `Against ${dn}, let the dealer take the bust risk. Your 12 is unlikely to win by hitting.` }
+      : { a: 'H', why: `12 only busts on a 10-value card. Against ${dn}, the dealer busts too rarely for standing to be worth it.` };
+    if (t === 11) return u === 11
+      ? { a: 'H', why: 'With 6 decks and the dealer standing on soft 17, 11 against an ace is slightly better hit than doubled. The dealer already checked for blackjack, but an ace is still strong.' }
+      : { a: dbl('H'), why: `11 is the best doubling hand: any 10-value card makes 21. Against ${dn}, put more money out.` };
+    if (t === 10) return u <= 9
+      ? { a: dbl('H'), why: `10 against ${dn}: you're the favorite to finish higher than the dealer. Double.` }
+      : { a: 'H', why: `Against ${dn}, the dealer is too strong to double your 10. Just hit.` };
+    if (t === 9) return (u >= 3 && u <= 6)
+      ? { a: dbl('H'), why: `9 against a weak ${u}: a good chance to double while the dealer is likely to bust.` }
+      : { a: 'H', why: `9 isn't strong enough to double against ${dn}. Hit.` };
+    return { a: 'H', why: `With ${t} you can't bust. Take a card.` };
+  }
+
+  // Count-based deviations. idx: switch at true count >= idx (dir +) or below idx (dir -).
+  const DEVS = [
+    { name: 'Insurance', hand: 'Any', up: 'A', idx: 3, play: 'Take insurance', ins: true },
+    { name: '16 vs 10', t: 16, up: 10, idx: 0, a: 'S', play: 'Stand', note: 'only when you can\'t surrender' },
+    { name: '15 vs 10', t: 15, up: 10, idx: 4, a: 'S', play: 'Stand', note: 'only when you can\'t surrender' },
+    { name: '10,10 vs 5', pair: 10, up: 5, idx: 5, a: 'P', play: 'Split' },
+    { name: '10,10 vs 6', pair: 10, up: 6, idx: 4, a: 'P', play: 'Split' },
+    { name: '10 vs 10', t: 10, up: 10, idx: 4, a: 'D', play: 'Double' },
+    { name: '12 vs 3', t: 12, up: 3, idx: 2, a: 'S', play: 'Stand' },
+    { name: '12 vs 2', t: 12, up: 2, idx: 3, a: 'S', play: 'Stand' },
+    { name: '11 vs A', t: 11, up: 11, idx: 1, a: 'D', play: 'Double' },
+    { name: '9 vs 2', t: 9, up: 2, idx: 1, a: 'D', play: 'Double' },
+    { name: '10 vs A', t: 10, up: 11, idx: 4, a: 'D', play: 'Double' },
+    { name: '9 vs 7', t: 9, up: 7, idx: 3, a: 'D', play: 'Double' },
+    { name: '16 vs 9', t: 16, up: 9, idx: 5, a: 'S', play: 'Stand', note: 'only when you can\'t surrender' },
+    { name: '13 vs 2', t: 13, up: 2, idx: -1, a: 'H', below: true, play: 'Hit' },
+    { name: '12 vs 4', t: 12, up: 4, idx: 0, a: 'H', below: true, play: 'Hit' },
+    { name: '12 vs 5', t: 12, up: 5, idx: -2, a: 'H', below: true, play: 'Hit' },
+    { name: '12 vs 6', t: 12, up: 6, idx: -1, a: 'H', below: true, play: 'Hit' },
+    { name: '13 vs 3', t: 13, up: 3, idx: -2, a: 'H', below: true, play: 'Hit' },
+    { name: '14 vs 10', t: 14, up: 10, idx: 3, a: 'R', play: 'Surrender', fab: true },
+    { name: '15 vs 9', t: 15, up: 9, idx: 2, a: 'R', play: 'Surrender', fab: true },
+    { name: '15 vs A', t: 15, up: 11, idx: 1, a: 'R', play: 'Surrender', fab: true },
+  ];
+
+  function deviation(cards, up, o, tcF) {
+    const u = rv(up);
+    const { total: t, soft } = total(cards);
+    if (soft) return null;
+    const pairTen = cards.length === 2 && rv(cards[0].r) === 10 && rv(cards[1].r) === 10;
+    for (const d of DEVS) {
+      if (d.ins || d.up !== u) continue;
+      if (d.pair) { if (!pairTen || !o.canSplit) continue; }
+      else if (d.t !== t || (pairTen && o.canSplit && t === 20)) continue;
+      const hit = d.below ? tcF < d.idx : tcF >= d.idx;
+      if (!hit) continue;
+      if (d.a === 'D' && !o.canDouble) continue;
+      if (d.a === 'R' && !o.canSurrender) continue;
+      if (d.a === 'S' && o.canSurrender && (t === 16 || t === 15) && (u >= 9)) {
+        // Surrender is still the better play when it's available.
+        const b = basic(cards, up, o); if (b.a === 'R') continue;
+      }
+      const sign = tcF >= 0 ? '+' : '';
+      const why = d.below
+        ? `Count play: at a true count below ${d.idx >= 0 ? '+' : ''}${d.idx}, the shoe is rich in small cards, so ${d.name.replace(' vs ', ' against ')} becomes a ${d.play.toLowerCase()}. True count now ${sign}${tcF}.`
+        : `Count play: at a true count of ${d.idx >= 0 ? '+' : ''}${d.idx} or more, the shoe is rich in 10s and aces, so ${d.name.replace(' vs ', ' against ')} becomes a ${d.play.toLowerCase()}. True count now ${sign}${tcF}.`;
+      return { a: d.a, why, deviation: true };
+    }
+    return null;
+  }
+
+  function recommend(cards, up, o, tc, adv) {
+    const tcF = Math.floor(tc);
+    if (adv) { const d = deviation(cards, up, o, tcF); if (d) return d; }
+    return basic(cards, up, o);
+  }
+
+  function rampUnits(tc) {
+    const t = Math.floor(tc);
+    if (t <= 1) return 1; if (t === 2) return 2; if (t === 3) return 4; if (t === 4) return 6; if (t === 5) return 8; return 10;
+  }
+  const edgeAt = tc => -0.4 + 0.5 * tc;
+
+  class Game {
+    constructor(opt = {}) {
+      this.shoe = new Shoe(6, 0.75, opt.rng || Math.random);
+      this.bankroll = opt.bankroll ?? 1000;
+      this.minBet = 10;
+      this.phase = 'bet';
+      this.hands = []; this.dealer = []; this.active = 0;
+      this.holeHidden = true; this.insuranceBet = 0; this.shuffled = false; this.roundNet = null;
+    }
+    get up() { return this.dealer[0]; }
+    newRound() { if (this.phase === 'done') { this.phase = 'bet'; this.hands = []; this.dealer = []; this.roundNet = null; } }
+    deal(bet) {
+      if (this.phase !== 'bet' || bet < this.minBet || bet > this.bankroll) return false;
+      this.shuffled = false;
+      if (this.shoe.needsShuffle()) { this.shoe.shuffle(); this.shuffled = true; }
+      this.start = this.bankroll;
+      this.bankroll -= bet;
+      this.hands = [{ cards: [], bet, done: false, doubled: false, surrendered: false, splitAces: false, result: null }];
+      this.dealer = []; this.active = 0; this.insuranceBet = 0; this.holeHidden = true; this.roundNet = null;
+      const h = this.hands[0];
+      h.cards.push(this.shoe.draw());
+      this.dealer.push(this.shoe.draw());
+      h.cards.push(this.shoe.draw());
+      this.dealer.push(this.shoe.draw(false));
+      if (rv(this.up.r) === 11) { this.phase = 'insurance'; return true; }
+      this._afterInsurance();
+      return true;
+    }
+    insurance(take) {
+      if (this.phase !== 'insurance') return;
+      if (take) {
+        const ins = Math.min(this.hands[0].bet / 2, this.bankroll);
+        this.bankroll -= ins; this.insuranceBet = ins;
+      }
+      this._afterInsurance();
+    }
+    _reveal() { if (this.holeHidden) { this.holeHidden = false; this.shoe.see(this.dealer[1]); } }
+    _afterInsurance() {
+      const h = this.hands[0];
+      const u = rv(this.up.r);
+      if ((u === 11 || u === 10) && isBJ(this.dealer)) {
+        this._reveal();
+        if (this.insuranceBet) this.bankroll += this.insuranceBet * 3;
+        if (isBJ(h.cards)) { h.result = 'push'; this.bankroll += h.bet; } else h.result = 'lose';
+        h.done = true; return this._finish();
+      }
+      if (isBJ(h.cards)) {
+        this._reveal();
+        h.result = 'blackjack'; this.bankroll += h.bet * 2.5; h.done = true; return this._finish();
+      }
+      this.phase = 'play';
+    }
+    options() {
+      const h = this.hands[this.active];
+      if (!h || this.phase !== 'play') return { canHit: false, canStand: false, canDouble: false, canSplit: false, canSurrender: false };
+      const two = h.cards.length === 2;
+      return {
+        canHit: true, canStand: true,
+        canDouble: two && !h.splitAces && this.bankroll >= h.bet,
+        canSplit: two && rv(h.cards[0].r) === rv(h.cards[1].r) && this.hands.length < 4 && !h.splitAces && this.bankroll >= h.bet,
+        canSurrender: two && this.hands.length === 1,
+      };
+    }
+    act(a) {
+      if (this.phase !== 'play') return false;
+      const o = this.options();
+      const h = this.hands[this.active];
+      if (a === 'H') {
+        h.cards.push(this.shoe.draw());
+        const t = total(h.cards).total;
+        if (t >= 21) h.done = true;
+      } else if (a === 'S') {
+        h.done = true;
+      } else if (a === 'D') {
+        if (!o.canDouble) return false;
+        this.bankroll -= h.bet; h.bet *= 2; h.doubled = true;
+        h.cards.push(this.shoe.draw()); h.done = true;
+      } else if (a === 'P') {
+        if (!o.canSplit) return false;
+        this.bankroll -= h.bet;
+        const aces = h.cards[0].r === 'A';
+        const nh = { cards: [h.cards.pop()], bet: h.bet, done: false, doubled: false, surrendered: false, splitAces: aces, result: null };
+        h.splitAces = aces;
+        this.hands.splice(this.active + 1, 0, nh);
+        h.cards.push(this.shoe.draw());
+        nh.cards.push(this.shoe.draw());
+        if (aces) { h.done = true; nh.done = true; }
+        if (total(h.cards).total === 21) h.done = true;
+        if (total(nh.cards).total === 21) nh.done = true;
+      } else if (a === 'R') {
+        if (!o.canSurrender) return false;
+        h.surrendered = true; h.done = true; h.result = 'surrender'; this.bankroll += h.bet / 2;
+      } else return false;
+      this._advance();
+      return true;
+    }
+    _advance() {
+      while (this.active < this.hands.length && this.hands[this.active].done) this.active++;
+      if (this.active >= this.hands.length) this._dealerPlay();
+    }
+    _dealerPlay() {
+      this._reveal();
+      const live = this.hands.filter(h => !h.surrendered && total(h.cards).total <= 21);
+      if (live.length) {
+        while (total(this.dealer).total < 17) this.dealer.push(this.shoe.draw());
+      }
+      const d = total(this.dealer).total;
+      for (const h of this.hands) {
+        if (h.surrendered) continue;
+        const p = total(h.cards).total;
+        if (p > 21) h.result = 'bust';
+        else if (d > 21 || p > d) { h.result = 'win'; this.bankroll += h.bet * 2; }
+        else if (p === d) { h.result = 'push'; this.bankroll += h.bet; }
+        else h.result = 'lose';
+      }
+      this._finish();
+    }
+    _finish() { this.phase = 'done'; this.active = -1; this.roundNet = this.bankroll - this.start; }
+  }
+
+  return { SUITS, RANKS, rv, hiLo, total, isBJ, rng32, Shoe, basic, deviation, recommend, DEVS, rampUnits, edgeAt, Game };
+})();
+if (typeof module !== 'undefined') module.exports = BJ;
+// ENGINE END
+</script>
+
+<script>
+(function () {
+  const $ = s => document.querySelector(s);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } },
+  };
+  const NAMES = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split', R: 'Surrender' };
+  const money = n => (n < 0 ? '−$' : '$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
+  const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n);
+
+  const settings = Object.assign({ hints: true, showCount: true, adv: false }, store.get('bj.settings', {}));
+  const stats = Object.assign({ hands: 0, net: 0, decisions: 0, correct: 0, bets: 0, onRamp: 0, mistakes: [] }, store.get('bj.stats', {}));
+  const game = new BJ.Game({ bankroll: store.get('bj.bankroll', 1000) });
+  let bet = 10;
+  let feedback = null;
+  let countFb = null;
+  let confirmReset = null;
+
+  const save = () => { store.set('bj.settings', settings); store.set('bj.stats', stats); store.set('bj.bankroll', game.bankroll); };
+  const tcNow = () => game.shoe.trueCount();
+  const suggestedBet = () => Math.min(BJ.rampUnits(tcNow()) * game.minBet, Math.max(game.minBet, Math.floor(game.bankroll / 5) * 5));
+
+  function cardEl(c, hidden) {
+    const d = document.createElement('div');
+    if (hidden) { d.className = 'card back'; d.setAttribute('aria-label', 'Face-down card'); return d; }
+    const red = c.s === '♥' || c.s === '♦';
+    d.className = 'card' + (red ? ' red' : '');
+    d.setAttribute('aria-label', c.r + ' of ' + ({ '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs' })[c.s]);
+    d.innerHTML = `<span class="ix">${c.r}<small>${c.s}</small></span><span class="pip">${c.s}</span>`;
+    return d;
+  }
+  const totLabel = cards => { const t = BJ.total(cards); return (t.soft && t.total < 21 ? 'soft ' : '') + t.total; };
+
+  function render() {
+    $('#bank').textContent = money(game.bankroll);
+    $('#roundNet').textContent = game.roundNet === null ? '—' : (game.roundNet > 0 ? '+' : '') + money(game.roundNet);
+    const left = game.shoe.cards.length, size = game.shoe.size;
+    $('#shoeLbl').textContent = `Shoe · ${(left / 52).toFixed(1)} decks left · reshuffle at 1.5`;
+    $('#shoeBar').style.width = (100 * (size - left) / size) + '%';
+
+    // Dealer
+    const dc = $('#dCards'); dc.innerHTML = '';
+    game.dealer.forEach((c, i) => dc.appendChild(cardEl(c, i === 1 && game.holeHidden)));
+    const dt = $('#dTot');
+    if (game.dealer.length) { dt.hidden = false; dt.textContent = game.holeHidden ? 'shows ' + BJ.rv(game.up.r) : totLabel(game.dealer); }
+    else dt.hidden = true;
+
+    // Player
+    const ph = $('#pHands'); ph.innerHTML = '';
+    if (!game.hands.length) {
+      const h = document.createElement('div'); h.className = 'hand';
+      h.innerHTML = '<div class="cards"></div><span class="label">Place a bet to deal</span>';
+      ph.appendChild(h);
+    }
+    game.hands.forEach((h, i) => {
+      const el = document.createElement('div');
+      el.className = 'hand' + (i === game.active && game.phase === 'play' ? ' active' : '');
+      const cards = document.createElement('div'); cards.className = 'cards';
+      h.cards.forEach(c => cards.appendChild(cardEl(c)));
+      el.appendChild(cards);
+      const meta = document.createElement('div'); meta.className = 'row';
+      meta.innerHTML = `<span class="tot">${totLabel(h.cards)}</span><span class="num label">${money(h.bet)}${h.doubled ? ' · doubled' : ''}</span>`;
+      if (h.result) {
+        const map = { win: ['Win', 'res-win'], blackjack: ['Blackjack 3:2', 'res-win'], push: ['Push', 'res-push'], lose: ['Lose', 'res-lose'], bust: ['Bust', 'res-lose'], surrender: ['Surrendered', 'res-push'] };
+        const [txt, cls] = map[h.result];
+        meta.innerHTML += `<span class="chip-res ${cls}">${txt}</span>`;
+      }
+      el.appendChild(meta);
+      ph.appendChild(el);
+    });
+
+    renderControls();
+    renderCoach();
+    renderFeedback();
+    renderCount();
+    renderStats();
+
+    $('#optHints').checked = settings.hints;
+    $('#optCount').checked = settings.showCount;
+    $('#optAdv').checked = settings.adv;
+    $('#resetConfirm').innerHTML = confirmReset ? `<div class="fb info">${confirmReset === 'bank' ? 'Reset your bankroll to $1,000?' : 'Clear all session stats?'} <div class="row" style="margin-top:8px"><button id="yesReset" class="primary">Yes, reset</button><button id="noReset">Keep it</button></div></div>` : '';
+    if (confirmReset) {
+      $('#yesReset').onclick = () => {
+        if (confirmReset === 'bank') { game.bankroll = 1000; bet = 10; }
+        else Object.assign(stats, { hands: 0, net: 0, decisions: 0, correct: 0, bets: 0, onRamp: 0, mistakes: [] });
+        confirmReset = null; save(); render();
+      };
+      $('#noReset').onclick = () => { confirmReset = null; render(); };
+    }
+  }
+
+  function renderControls() {
+    const c = $('#controls'); c.innerHTML = '';
+    if (game.phase === 'bet' || game.phase === 'done') {
+      if (game.phase === 'done') {
+        const r = document.createElement('div'); r.className = 'row';
+        const b = document.createElement('button'); b.className = 'primary act'; b.textContent = 'Next hand'; b.id = 'next';
+        b.onclick = () => { game.newRound(); feedback = null; render(); };
+        r.appendChild(b); c.appendChild(r);
+        if (game.bankroll < game.minBet) {
+          const n = document.createElement('div'); n.className = 'fb no';
+          n.textContent = 'You are below the $10 minimum. Reset the bankroll in Settings to keep practicing.';
+          c.appendChild(n);
+        }
+        return;
+      }
+      bet = Math.max(game.minBet, Math.min(bet, game.bankroll));
+      const line = document.createElement('div'); line.className = 'betline';
+      line.innerHTML = `<span class="label">Your bet</span><span class="big">${money(bet)}</span><span class="label">Coach suggests ${money(suggestedBet())}</span>`;
+      c.appendChild(line);
+      const chips = document.createElement('div'); chips.className = 'row';
+      [5, 10, 25, 100].forEach(v => {
+        const b = document.createElement('button'); b.className = 'chip c' + v; b.textContent = v; b.setAttribute('aria-label', 'Add $' + v);
+        b.onclick = () => { bet = Math.min(game.bankroll, bet + v); render(); };
+        chips.appendChild(b);
+      });
+      const clr = document.createElement('button'); clr.textContent = 'Min'; clr.onclick = () => { bet = game.minBet; render(); };
+      const sug = document.createElement('button'); sug.textContent = 'Use suggestion'; sug.onclick = () => { bet = suggestedBet(); render(); };
+      chips.append(clr, sug);
+      c.appendChild(chips);
+      const r = document.createElement('div'); r.className = 'row';
+      const deal = document.createElement('button'); deal.className = 'primary act'; deal.textContent = 'Deal'; deal.id = 'deal';
+      deal.disabled = game.bankroll < game.minBet;
+      deal.onclick = doDeal;
+      r.appendChild(deal); c.appendChild(r);
+      return;
+    }
+    if (game.phase === 'insurance') {
+      const r = document.createElement('div'); r.className = 'row';
+      const y = document.createElement('button'); y.className = 'act'; y.textContent = 'Take insurance';
+      const n = document.createElement('button'); n.className = 'act'; n.textContent = 'No insurance';
+      y.onclick = () => doInsurance(true); n.onclick = () => doInsurance(false);
+      r.append(y, n); c.appendChild(r);
+      return;
+    }
+    const o = game.options();
+    const r = document.createElement('div'); r.className = 'row';
+    [['H', o.canHit], ['S', o.canStand], ['D', o.canDouble], ['P', o.canSplit], ['R', o.canSurrender]].forEach(([a, ok]) => {
+      const b = document.createElement('button'); b.className = 'act'; b.textContent = NAMES[a]; b.disabled = !ok;
+      b.onclick = () => doAct(a);
+      r.appendChild(b);
+    });
+    c.appendChild(r);
+  }
+
+  function currentRec() {
+    const h = game.hands[game.active];
+    return BJ.recommend(h.cards, game.up.r, game.options(), tcNow(), settings.adv);
+  }
+
+  function renderCoach() {
+    const el = $('#coach');
+    const tc = tcNow(), tcF = Math.floor(tc);
+    if (game.phase === 'bet') {
+      const units = BJ.rampUnits(tc);
+      el.innerHTML = settings.hints || settings.showCount
+        ? `<b class="move">Bet ${money(suggestedBet())}</b>True count ${signed(tcF)} → ${units} unit${units > 1 ? 's' : ''}. ${tcF <= 1 ? 'The house has the edge right now, so bet the minimum and wait.' : `You have roughly a ${BJ.edgeAt(tcF).toFixed(1)}% edge on this hand. Bet more while the shoe favors you.`}`
+        : 'Set your bet, then deal. Turn on hints or the count to see the suggested bet.';
+      if (game.shuffled) el.innerHTML += '<div class="fb info" style="margin-top:8px">New shoe. The count starts again at 0.</div>';
+      return;
+    }
+    if (game.phase === 'insurance') {
+      el.innerHTML = settings.hints
+        ? `<b class="move">${tcF >= 3 ? 'Take insurance' : 'Decline insurance'}</b>${tcF >= 3 ? `At a true count of ${signed(tcF)}, more than one card in three is a 10, so the 2:1 payout is worth it.` : 'Insurance is a side bet that the hole card is a 10. Only about 30% of cards are 10s, and it pays 2:1. You need a true count of +3 or more for it to pay off.'}`
+        : 'The dealer shows an ace. Decide on insurance.';
+      return;
+    }
+    if (game.phase === 'play') {
+      if (!settings.hints) { el.innerHTML = 'Your move. You\'ll be graded after you act.'; return; }
+      const rec = currentRec();
+      el.innerHTML = `${rec.deviation ? '<div class="dev">Count play</div>' : ''}<b class="move">${NAMES[rec.a]}</b>${rec.why}`;
+      return;
+    }
+    const nets = game.roundNet;
+    el.innerHTML = `<b class="move">${nets > 0 ? 'Won ' + money(nets) : nets < 0 ? 'Lost ' + money(-nets) : 'Even hand'}</b>Results swing hand to hand. What matters is making the right decision every time.`;
+  }
+
+  function renderFeedback() {
+    const f = $('#feedback');
+    if (!feedback) { f.innerHTML = ''; return; }
+    f.innerHTML = `<div class="fb ${feedback.cls}">${feedback.html}</div>`;
+  }
+
+  function renderCount() {
+    const show = settings.showCount;
+    const tc = tcNow();
+    $('#rc').textContent = show ? signed(game.shoe.rc) : '?';
+    $('#tc').textContent = show ? signed(Math.floor(tc)) + ' (' + (tc >= 0 ? '+' : '−') + Math.abs(tc).toFixed(1) + ')' : '?';
+    $('#dl').textContent = game.shoe.decksLeft().toFixed(1);
+    const e = BJ.edgeAt(tc);
+    $('#edge').textContent = show ? (e >= 0 ? '+' : '−') + Math.abs(e).toFixed(1) + '%' : '?';
+    $('#edge').style.color = show ? (e >= 0 ? 'var(--good)' : 'var(--bad)') : '';
+    $('#countFb').innerHTML = countFb ? `<div class="fb ${countFb.cls}">${countFb.text}</div>` : '';
+  }
+
+  function renderStats() {
+    $('#sHands').textContent = stats.hands;
+    $('#sNet').textContent = (stats.net > 0 ? '+' : '') + money(stats.net);
+    $('#sAcc').textContent = stats.decisions ? (100 * stats.correct / stats.decisions).toFixed(1) + '%' : '—';
+    $('#sRamp').textContent = stats.bets ? Math.round(100 * stats.onRamp / stats.bets) + '%' : '—';
+    const m = $('#mist'); m.innerHTML = '';
+    if (!stats.mistakes.length) { m.innerHTML = '<li>None yet.</li>'; return; }
+    stats.mistakes.slice(0, 6).forEach(x => { const li = document.createElement('li'); li.textContent = x; m.appendChild(li); });
+  }
+
+  function grade(ok, taken, rec, label) {
+    stats.decisions++;
+    if (ok) {
+      stats.correct++;
+      feedback = { cls: 'ok', html: `<b>Correct: ${taken}.</b> ${rec.why}` };
+    } else {
+      feedback = { cls: 'no', html: `<b>You chose ${taken}. The book play is ${NAMES[rec.a] || rec.a}.</b> ${rec.why}` };
+      stats.mistakes.unshift(`${label}: you ${taken.toLowerCase()}, book says ${(NAMES[rec.a] || rec.a).toLowerCase()}`);
+      stats.mistakes = stats.mistakes.slice(0, 12);
+    }
+  }
+
+  function afterRound() {
+    if (game.phase === 'done') {
+      stats.hands++; stats.net += game.roundNet;
+      if (!feedback) feedback = { cls: 'info', html: game.hands[0].result === 'blackjack' ? '<b>Blackjack.</b> Paid 3:2. No decision needed.' : game.hands[0].result ? '<b>Dealer blackjack.</b> The hand ended before you could act. Nothing you could do.' : '' };
+    }
+    save(); render();
+  }
+
+  function doDeal() {
+    const sug = suggestedBet();
+    const units = BJ.rampUnits(tcNow());
+    if (!game.deal(bet)) return;
+    stats.bets++;
+    if (bet === sug) { stats.onRamp++; feedback = null; }
+    else feedback = { cls: 'info', html: `<b>Bet check:</b> you bet ${money(bet)}. The ramp says ${money(sug)} (${units} unit${units > 1 ? 's' : ''}) at that count. ${bet > sug ? 'Betting big at a low count gives the house its full edge on more money.' : 'Betting small at a high count leaves your edge unused.'}` };
+    afterRound();
+  }
+
+  function doInsurance(take) {
+    const tcF = Math.floor(tcNow());
+    const right = tcF >= 3;
+    const rec = { a: right ? 'Take insurance' : 'Decline insurance', why: right ? `At a true count of ${signed(tcF)}, insurance has a positive expectation.` : `Insurance loses money unless the true count is +3 or higher. It's ${signed(tcF)} now.` };
+    grade(take === right, take ? 'Take insurance' : 'Decline insurance', rec, 'Insurance');
+    game.insurance(take);
+    afterRound();
+  }
+
+  function doAct(a) {
+    const h = game.hands[game.active];
+    const rec = currentRec();
+    const label = `${totLabel(h.cards)}${h.cards.length === 2 && BJ.rv(h.cards[0].r) === BJ.rv(h.cards[1].r) ? ' (pair)' : ''} vs ${BJ.rv(game.up.r) === 11 ? 'A' : BJ.rv(game.up.r)}`;
+    grade(a === rec.a, NAMES[a], rec, label);
+    game.act(a);
+    afterRound();
+  }
+
+  $('#checkCount').onclick = () => {
+    const g = parseInt($('#guess').value, 10);
+    if (Number.isNaN(g)) { countFb = { cls: 'no', text: 'Type a whole number, like 3 or -2.' }; }
+    else if (g === game.shoe.rc) countFb = { cls: 'ok', text: `Correct, the running count is ${signed(g)}. True count: ${signed(Math.floor(tcNow()))}.` };
+    else countFb = { cls: 'no', text: `Not quite. The running count is ${signed(game.shoe.rc)}. Remember the hole card only counts once it's turned over.` };
+    renderCount();
+  };
+  $('#optHints').onchange = e => { settings.hints = e.target.checked; save(); render(); };
+  $('#optCount').onchange = e => { settings.showCount = e.target.checked; save(); render(); };
+  $('#optAdv').onchange = e => { settings.adv = e.target.checked; save(); render(); };
+  $('#resetBank').onclick = () => { confirmReset = 'bank'; render(); };
+  $('#resetStats').onclick = () => { confirmReset = 'stats'; render(); };
+
+  // Strategy charts built from the same engine the coach uses.
+  const UPS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'A'];
+  const C = r => ({ r, s: '♠' });
+  function code(cards, up) {
+    const all = { canDouble: true, canSplit: true, canSurrender: true };
+    const a = BJ.basic(cards, up, all).a;
+    if (a === 'D') { const f = BJ.basic(cards, up, { canDouble: false, canSplit: true, canSurrender: true }).a; return f === 'S' ? 'Ds' : 'D'; }
+    if (a === 'R') return 'Rh';
+    return a;
+  }
+  function chart(rows) {
+    let h = '<table class="chart"><tr><th class="rowh"></th>' + UPS.map(u => `<th>${u}</th>`).join('') + '</tr>';
+    for (const [label, cards] of rows) {
+      h += `<tr><th class="rowh">${label}</th>` + UPS.map(u => { const k = code(cards, u); return `<td class="k-${k}">${k}</td>`; }).join('') + '</tr>';
+    }
+    return h + '</table>';
+  }
+  const hard = [];
+  for (let t = 17; t >= 8; t--) hard.push([t === 17 ? '17+' : String(t), t <= 11 ? [C('2'), C(String(t - 2))] : [C('10'), C(String(t - 10))]]);
+  const soft = [];
+  for (let k = 9; k >= 2; k--) soft.push(['A,' + k, [C('A'), C(String(k))]]);
+  const pairs = [['A,A', [C('A'), C('A')]], ['10,10', [C('10'), C('K')]]];
+  for (let k = 9; k >= 2; k--) pairs.push([k + ',' + k, [C(String(k)), C(String(k))]]);
+  $('#chartHard').innerHTML = chart(hard);
+  $('#chartSoft').innerHTML = chart(soft);
+  $('#chartPair').innerHTML = chart(pairs);
+  $('#devTable').innerHTML = '<table class="idx"><tr><th>Hand</th><th>Play</th><th>True count</th></tr>' +
+    BJ.DEVS.map(d => `<tr><td>${d.name}${d.fab ? ' (Fab 4)' : ''}</td><td>${d.play}${d.note ? ` <span class="label">${d.note}</span>` : ''}</td><td class="num">${d.below ? 'below ' : ''}${d.idx > 0 ? '+' : ''}${d.idx}${d.below ? '' : ' or more'}</td></tr>`).join('') + '</table>';
+
+  render();
+})();
+</script>
+
+<script>
+// Save the game on the phone for offline play (only when served from a real web address).
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* not available here */ });
+  });
+}
+</script>
+</body>
+</html>
